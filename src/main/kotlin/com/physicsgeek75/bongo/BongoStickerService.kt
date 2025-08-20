@@ -1,0 +1,236 @@
+package com.physicsgeek75.bongo
+
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.components.PersistentStateComponent
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.State
+import com.intellij.openapi.components.Storage
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.IconLoader
+import com.intellij.openapi.wm.WindowManager
+import com.intellij.ui.components.JBLabel
+import com.intellij.util.*
+import com.intellij.util.ui.JBUI
+import java.awt.Point
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
+import java.awt.*
+import javax.swing.*
+import kotlin.math.max
+import kotlin.math.min
+
+
+private const val DEFAULT_SIZE_DIP = 90
+private const val DEFAULT_MARGIN_DIP = 12
+private const val ICON_DIP = DEFAULT_SIZE_DIP
+
+class StickerState {
+    var visible: Boolean = true
+    var xDip: Int = -1
+    var yDip: Int = -1
+    var sizeDip: Int = DEFAULT_SIZE_DIP
+}
+
+@State(name = "BongoStickerState", storages = [Storage("bongoSticker.xml")])
+@Service(Service.Level.PROJECT)
+class BongoStickerService(private val project: Project)
+    : PersistentStateComponent<StickerState>, Disposable {
+
+    private var state = StickerState()
+
+    private var layeredPane: JLayeredPane? = null
+    private var panel: JPanel? = null
+    private var label: JBLabel? = null
+    private var icon1: Icon? = null
+    private var icon2: Icon? = null
+    private var toggle = false
+
+    private val connection = ApplicationManager.getApplication().messageBus.connect(this)
+
+    init {
+        connection.subscribe(BongoTopic.TOPIC, object : BongoTopic {
+            override fun tapped() = onTap()
+        })
+    }
+
+    // ---------- PersistentStateComponent ----------
+    override fun getState(): StickerState = state
+    override fun loadState(s: StickerState) { state = s }
+
+    // ---------- Lifecycle ----------
+    fun ensureAttached() {
+        if (!state.visible || panel != null) return
+
+        val app = ApplicationManager.getApplication()
+        if (!app.isDispatchThread) {
+            app.invokeLater({ ensureAttached() }, ModalityState.any())
+            return
+        }
+
+
+        val frame = WindowManager.getInstance().getFrame(project) as? JFrame ?: return
+        if (frame.rootPane == null) {
+            // schedule one more try shortly
+            app.invokeLater({ ensureAttached() }, ModalityState.any())
+            return
+        }
+
+
+        val lp = frame.rootPane.layeredPane ?: run {
+            app.invokeLater({ ensureAttached() }, ModalityState.any())
+            return
+        }
+        layeredPane = lp
+
+        // icons (scaled once; cached here)
+        icon1 = loadScaledIcon("/icons/icon1.svg", state.sizeDip)
+        icon2 = loadScaledIcon("/icons/icon2.svg", state.sizeDip)
+
+        label = JBLabel(icon1).apply {
+            horizontalAlignment = JBLabel.CENTER
+            verticalAlignment = JBLabel.CENTER
+            toolTipText = "Bongo Cat"
+            preferredSize = JBDimensionDip(state.sizeDip, state.sizeDip)
+            minimumSize   = preferredSize
+            maximumSize   = preferredSize
+            cursor = Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
+        }
+
+        // Transparent container we can position freely
+        panel = object : JPanel(null) {
+            override fun isOpaque() = false
+        }.apply {
+            val sizePx = JBUI.scale(state.sizeDip)
+            setSize(sizePx, sizePx)
+            add(label)
+            label!!.setBounds(0, 0, sizePx, sizePx)
+            cursor = Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
+            addDragHandlers(this,label!! ,lp)
+        }
+
+        // Compute starting spot
+        val w = panel!!.width
+        val h = panel!!.height
+        val start = computeStartPoint(lp, w, h)
+        panel!!.setLocation(start)
+
+        // Add to a high layer so it floats above editor
+        lp.add(panel, JLayeredPane.POPUP_LAYER,0)
+        lp.revalidate()
+        lp.repaint()
+
+        // Keep it inside bounds on window resize
+        lp.addComponentListener(object : ComponentAdapter() {
+            override fun componentResized(e: ComponentEvent) {
+                clampIntoBounds()
+            }
+        })
+    }
+
+    fun setVisible(visible: Boolean) {
+        if (visible == state.visible) return
+        state.visible = visible
+        if (visible) ensureAttached() else detach()
+    }
+
+    private fun detach() {
+        val lp = layeredPane
+        val p = panel
+        if (lp != null && p != null) {
+            lp.remove(p)
+            lp.revalidate()
+            lp.repaint()
+        }
+        panel = null
+        label = null
+        icon1 = null
+        icon2 = null
+        layeredPane = null
+        toggle = false
+    }
+
+    override fun dispose() = detach()
+
+    // ---------- Behavior ----------
+    private fun onTap() {
+        val p = panel ?: return
+        val lbl = label ?: return
+        val i1 = icon1 ?: return
+        val i2 = icon2 ?: return
+
+        toggle = !toggle
+        ApplicationManager.getApplication().invokeLater {
+            lbl.icon = if (toggle) i2 else i1
+            punch(p) // tiny “bounce” effect
+        }
+    }
+
+    private fun punch(p: JPanel) {
+        val y0 = p.y
+        val dy = JBUI.scale(2)
+        p.setLocation(p.x, y0 + dy)
+        Timer(90) {
+            p.setLocation(p.x, y0)
+        }.apply { isRepeats = false; start() }
+    }
+
+    // ---------- Helpers ----------
+    private fun loadScaledIcon(path: String, dip: Int): Icon {
+        val raw = try { IconLoader.getIcon(path, javaClass) }
+        catch (_: Throwable) { com.intellij.icons.AllIcons.General.Information }
+        val targetPx = JBUI.scale(dip)
+        val baseH = max(1, raw.iconHeight)
+        val scale = targetPx.toFloat() / baseH
+        return IconUtil.scale(raw, null, scale)
+    }
+
+    private fun JBDimensionDip(wDip: Int, hDip: Int) =
+        com.intellij.util.ui.JBDimension(JBUI.scale(wDip), JBUI.scale(hDip))
+
+    private fun computeStartPoint(lp: JLayeredPane, w: Int, h: Int): Point {
+        val margin = JBUI.scale(DEFAULT_MARGIN_DIP)
+        val x = if (state.xDip >= 0) JBUI.scale(state.xDip) else lp.width - w - margin
+        val y = if (state.yDip >= 0) JBUI.scale(state.yDip) else lp.height - h - margin
+        return Point(x.coerceIn(0, max(0, lp.width - w)),
+            y.coerceIn(0, max(0, lp.height - h)))
+    }
+
+    private fun clampIntoBounds() {
+        val lp = layeredPane ?: return
+        val p = panel ?: return
+        val maxX = max(0, lp.width - p.width)
+        val maxY = max(0, lp.height - p.height)
+        val nx = p.x.coerceIn(0, maxX)
+        val ny = p.y.coerceIn(0, maxY)
+        if (nx != p.x || ny != p.y) p.setLocation(nx, ny)
+    }
+
+    private fun addDragHandlers(panel: JPanel, label: JComponent, lp: JLayeredPane) {
+        val ma = object : java.awt.event.MouseAdapter() {
+            private var dx = 0
+            private var dy = 0
+            override fun mousePressed(e: java.awt.event.MouseEvent) {
+                val pt = SwingUtilities.convertPoint(e.component, e.point, lp)
+                dx = pt.x - panel.x
+                dy = pt.y - panel.y
+            }
+            override fun mouseDragged(e: java.awt.event.MouseEvent) {
+                val pt = SwingUtilities.convertPoint(e.component, e.point, lp)
+                val nx = (pt.x - dx).coerceIn(0, kotlin.math.max(0, lp.width - panel.width))
+                val ny = (pt.y - dy).coerceIn(0, kotlin.math.max(0, lp.height - panel.height))
+                panel.setLocation(nx, ny)
+                // persist as DIP
+                state.xDip = JBUI.unscale(nx)
+                state.yDip = JBUI.unscale(ny)
+            }
+        }
+        panel.addMouseListener(ma); panel.addMouseMotionListener(ma)
+        label.addMouseListener(ma); label.addMouseMotionListener(ma)
+    }
+
+    private fun Int.coerceIn(minVal: Int, maxVal: Int) = min(max(this, minVal), maxVal)
+}

@@ -1,5 +1,6 @@
 package com.physicsgeek75.bongo
 
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.actionSystem.EditorActionManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -12,6 +13,6 @@ class Startup : ProjectActivity, DumbAware {
         val original = typed.rawHandler
         typed.setupRawHandler(TypedHandler(original))
 
-
+        project.service<BongoStickerService>().ensureAttached()
 }
 }
