@@ -1,4 +1,4 @@
-package com.physicsgeek75.bongo
+/*package com.physicsgeek75.bongo
 
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -46,4 +46,4 @@ class ToolWindow : ToolWindowFactory, DumbAware {
             }
         })
     }
-}
+}*/

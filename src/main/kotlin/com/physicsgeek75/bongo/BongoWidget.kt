@@ -34,8 +34,8 @@ class BongoWidget(private val project: com.intellij.openapi.project.Project)
 
 
 
-    private val icon1: Icon = loadScaledIcon("icons/icon1.png")
-    private val icon2: Icon = loadScaledIcon("icons/icon2.png")
+    private val icon1: Icon = loadScaledIcon("icons/icon1.svg")
+    private val icon2: Icon = loadScaledIcon("icons/icon2.svg")
 
     private val label = JBLabel(icon1).apply {
         border = JBUI.Borders.empty(0, 8)

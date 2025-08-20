@@ -113,7 +113,7 @@ class BongoStickerService(private val project: Project)
         }
 
         // Compute starting spot
-        val w = panel!!.width*1.2.toInt()
+        val w = panel!!.width.toInt()
         val h = panel!!.height
         val start = computeStartPoint(lp, w, h)
         panel!!.setLocation(start)
@@ -161,7 +161,7 @@ class BongoStickerService(private val project: Project)
     }
 
     fun applySize(newDip: Int) {
-        state.sizeDip = newDip.coerceIn(6, 256)
+        state.sizeDip = newDip.coerceIn(0, 512)
 
         if (state.visible && panel == null) {
             ensureAttached()
@@ -177,7 +177,7 @@ class BongoStickerService(private val project: Project)
             preferredSize = JBDimensionDip(state.sizeDip, state.sizeDip)
             minimumSize   = preferredSize
             maximumSize   = preferredSize
-            setBounds(0, 0, (sizePx*1.2).toInt(), sizePx)
+            setBounds(0, 0, sizePx.toInt(), sizePx)
             icon = if (toggle) icon2 else icon1
             revalidate()
             repaint()
@@ -195,6 +195,17 @@ class BongoStickerService(private val project: Project)
         }
 
         clampIntoBounds()
+    }
+
+    fun resetPosition() {
+        state.xDip = -1; state.yDip = -1
+        layeredPane?.let { lp ->
+            panel?.let { p ->
+                val start = computeStartPoint(lp, p.width, p.height)
+                p.setLocation(start)
+                lp.revalidate(); lp.repaint()
+            }
+        }
     }
 
 

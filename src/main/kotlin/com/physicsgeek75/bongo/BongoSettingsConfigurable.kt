@@ -1,5 +1,6 @@
 package com.physicsgeek75.bongo
 
+import andel.text.textLeft
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.Project
@@ -19,17 +20,25 @@ class BongoSettingsConfigurable(private val project: Project) : Configurable {
     override fun createComponent(): JComponent {
         if (root == null) {
             root = panel {
-                group("Sticker") {
+                group("Main") {
                     row {
-                        enableCheck = checkBox("Enable sticker").component
+                        enableCheck = checkBox("Enable").component
                     }
+
                     row("Size") {
-                        // min=24, max=256, minor tick 4, major tick 16
-                        sizeSlider = slider(24, 256, 4, 16).applyToComponent {
+
+                        // min=0, max=512, minor tick 10, major tick 100
+                        sizeSlider = slider(0, 512, 10, majorTickSpacing = 100).applyToComponent {
                             paintTicks = true
                             paintLabels = true
                             snapToTicks = true
                         }.component
+                    }
+
+                    row {
+                        button("Reset position") {
+                            project.service<BongoStickerService>().resetPosition()
+                        }
                     }
                 }
             }
