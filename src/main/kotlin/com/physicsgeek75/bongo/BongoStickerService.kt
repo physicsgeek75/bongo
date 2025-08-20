@@ -24,8 +24,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 
-private const val DEFAULT_SIZE_DIP = 90
-private const val DEFAULT_MARGIN_DIP = 12
+private const val DEFAULT_SIZE_DIP = 128
+private const val DEFAULT_MARGIN_DIP = 24
 private const val ICON_DIP = DEFAULT_SIZE_DIP
 
 class StickerState {
@@ -113,15 +113,15 @@ class BongoStickerService(private val project: Project)
         }
 
         // Compute starting spot
-        val w = panel!!.width
+        val w = panel!!.width*1.2.toInt()
         val h = panel!!.height
         val start = computeStartPoint(lp, w, h)
         panel!!.setLocation(start)
 
         // Add to a high layer so it floats above editor
-        lp.add(panel, JLayeredPane.POPUP_LAYER,0)
-        lp.revalidate()
-        lp.repaint()
+        layeredPane!!.add(panel, JLayeredPane.POPUP_LAYER,0)
+        layeredPane!!.revalidate()
+        layeredPane!!.repaint()
 
         // Keep it inside bounds on window resize
         lp.addComponentListener(object : ComponentAdapter() {
@@ -132,10 +132,17 @@ class BongoStickerService(private val project: Project)
     }
 
     fun setVisible(visible: Boolean) {
-        if (visible == state.visible) return
+        if (state.visible == visible) {
+            if (visible && panel == null) ensureAttached()
+            return
+        }
         state.visible = visible
         if (visible) ensureAttached() else detach()
     }
+
+    fun isVisible(): Boolean = state.visible
+
+    fun getSizeDip(): Int = state.sizeDip
 
     private fun detach() {
         val lp = layeredPane
@@ -153,7 +160,47 @@ class BongoStickerService(private val project: Project)
         toggle = false
     }
 
+    fun applySize(newDip: Int) {
+        state.sizeDip = newDip.coerceIn(6, 256)
+
+        if (state.visible && panel == null) {
+            ensureAttached()
+        }
+
+        // REsclae once
+        icon1 = loadScaledIcon("/icons/icon1.svg", state.sizeDip)
+        icon2 = loadScaledIcon("/icons/icon2.svg", state.sizeDip)
+
+        val sizePx = JBUI.scale(state.sizeDip)
+
+        label?.apply {
+            preferredSize = JBDimensionDip(state.sizeDip, state.sizeDip)
+            minimumSize   = preferredSize
+            maximumSize   = preferredSize
+            setBounds(0, 0, (sizePx*1.2).toInt(), sizePx)
+            icon = if (toggle) icon2 else icon1
+            revalidate()
+            repaint()
+        }
+
+        panel?.apply {
+            setSize(sizePx, sizePx)
+            revalidate()
+            repaint()
+        }
+
+        layeredPane?.apply {
+            revalidate()
+            repaint()
+        }
+
+        clampIntoBounds()
+    }
+
+
     override fun dispose() = detach()
+
+
 
     // ---------- Behavior ----------
     private fun onTap() {

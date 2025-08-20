@@ -1,4 +1,4 @@
-package com.physicsgeek75.bongo
+/*package com.physicsgeek75.bongo
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.StatusBar
@@ -19,3 +19,4 @@ class BarFactory : StatusBarWidgetFactory {
     }
     override fun isEnabledByDefault() = true
 }
+*/
