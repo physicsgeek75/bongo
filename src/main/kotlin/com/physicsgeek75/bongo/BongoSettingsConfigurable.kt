@@ -14,19 +14,18 @@ class BongoSettingsConfigurable(private val project: Project) : Configurable {
     private var root: JComponent? = null
     private lateinit var enableCheck: JCheckBox
     private lateinit var sizeSlider: JSlider
-
+    private val svc = project.service<BongoStickerService>()
     override fun getDisplayName(): String = "Bongo Cat"
 
     override fun createComponent(): JComponent {
         if (root == null) {
             root = panel {
-                group("Main") {
+                group("Main", true) {
                     row {
                         enableCheck = checkBox("Enable").component
                     }
 
-                    row("Size") {
-
+                    row("Size: " + svc.getSizeDip() + " px") {
                         // min=0, max=512, minor tick 10, major tick 100
                         sizeSlider = slider(0, 512, 10, majorTickSpacing = 100).applyToComponent {
                             paintTicks = true
@@ -36,7 +35,7 @@ class BongoSettingsConfigurable(private val project: Project) : Configurable {
                     }
 
                     row {
-                        button("Reset position") {
+                        button("Reset Position") {
                             project.service<BongoStickerService>().resetPosition()
                         }
                     }
@@ -48,7 +47,6 @@ class BongoSettingsConfigurable(private val project: Project) : Configurable {
     }
 
     override fun isModified(): Boolean {
-        val svc = project.service<BongoStickerService>()
         return enableCheck.isSelected != svc.isVisible() ||
                 sizeSlider.value != svc.getSizeDip()
     }
