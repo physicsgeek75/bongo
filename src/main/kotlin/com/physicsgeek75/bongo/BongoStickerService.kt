@@ -25,7 +25,7 @@ import kotlin.math.min
 
 
 private const val DEFAULT_SIZE_DIP = 128
-private const val DEFAULT_MARGIN_DIP = 24
+private const val DEFAULT_MARGIN_DIP = 0
 private const val ICON_DIP = DEFAULT_SIZE_DIP
 
 class StickerState {
@@ -206,6 +206,10 @@ class BongoStickerService(private val project: Project)
                 lp.revalidate(); lp.repaint()
             }
         }
+    }
+
+    fun resetSize() {
+        applySize(DEFAULT_SIZE_DIP)
     }
 
 
