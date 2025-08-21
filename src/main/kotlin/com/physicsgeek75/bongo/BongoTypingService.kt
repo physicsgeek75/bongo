@@ -13,13 +13,17 @@ class BongoTypingService : Disposable {
 
     private val previous: TypedActionHandler = typed.rawHandler
 
+    private val installed: TypedActionHandler
+
+
     init {
-        typed.setupRawHandler(TypedHandler(previous))
+        val wrapper = TypedHandler(previous)
+        installed = wrapper
+        typed.setupRawHandler(wrapper)
     }
 
     override fun dispose() {
-        val current = typed.rawHandler
-        if (current is TypedHandler) {
+        if (typed.rawHandler === installed) {
             typed.setupRawHandler(previous)
         }
     }
