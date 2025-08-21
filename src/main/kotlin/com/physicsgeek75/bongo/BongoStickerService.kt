@@ -3,6 +3,7 @@ package com.physicsgeek75.bongo
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
@@ -51,6 +52,8 @@ class BongoStickerService(private val project: Project)
 
     private val connection = ApplicationManager.getApplication().messageBus.connect(this)
 
+    private var idleIcon=loadScaledIcon("/icons/idleIcon.svg",state.sizeDip)
+
     init {
         connection.subscribe(BongoTopic.TOPIC, object : BongoTopic {
             override fun tapped() = onTap()
@@ -89,6 +92,7 @@ class BongoStickerService(private val project: Project)
         // icons (scaled once; cached here)
         icon1 = loadScaledIcon("/icons/icon1.svg", state.sizeDip)
         icon2 = loadScaledIcon("/icons/icon2.svg", state.sizeDip)
+        idleIcon = loadScaledIcon("/icons/idleIcon.svg", state.sizeDip)
 
         label = JBLabel(icon1).apply {
             horizontalAlignment = JBLabel.CENTER
@@ -170,6 +174,7 @@ class BongoStickerService(private val project: Project)
         // REsclae once
         icon1 = loadScaledIcon("/icons/icon1.svg", state.sizeDip)
         icon2 = loadScaledIcon("/icons/icon2.svg", state.sizeDip)
+        idleIcon = loadScaledIcon("/icons/idleIcon.svg", state.sizeDip)
 
         val sizePx = JBUI.scale(state.sizeDip)
 
@@ -181,6 +186,9 @@ class BongoStickerService(private val project: Project)
             icon = if (toggle) icon2 else icon1
             revalidate()
             repaint()
+
+            if(!toggle) icon=idleIcon
+
         }
 
         panel?.apply {
@@ -218,11 +226,18 @@ class BongoStickerService(private val project: Project)
 
 
     // ---------- Behavior ----------
+    private var idleTimer = Timer(2000) {
+        toggle = false
+        label?.icon = idleIcon
+    }.apply { isRepeats = false }
+
     private fun onTap() {
         val p = panel ?: return
         val lbl = label ?: return
         val i1 = icon1 ?: return
         val i2 = icon2 ?: return
+
+        idleTimer.restart();
 
         toggle = !toggle
         ApplicationManager.getApplication().invokeLater {
