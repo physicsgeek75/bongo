@@ -20,9 +20,12 @@ import java.awt.event.ComponentEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.*
+import javax.sound.sampled.AudioSystem
+import javax.sound.sampled.Clip
 import javax.swing.*
 import kotlin.math.max
 import kotlin.math.min
+import javax.sound.sampled.*
 
 
 private const val DEFAULT_SIZE_DIP = 128
@@ -53,6 +56,10 @@ class BongoStickerService(private val project: Project)
     private val connection = ApplicationManager.getApplication().messageBus.connect(this)
 
     private var idleIcon=loadScaledIcon("/icons/idleIcon.svg",state.sizeDip)
+
+    private var clip: Clip? = null
+    var soundEnabled: Boolean = true
+    private var lastPlay = 0L //ns
 
     init {
         connection.subscribe(BongoTopic.TOPIC, object : BongoTopic {
@@ -256,6 +263,49 @@ class BongoStickerService(private val project: Project)
     }
 
     // ---------- Helpers ----------
+    fun preloadClip() {
+        if(clip!=null && clip!!.isOpen) return
+
+        val url = javaClass.getResource("/sounds/click.wav")
+            ?: return
+
+        AudioSystem.getAudioInputStream(url).use { original ->
+            val base = original.format
+            val target =
+                if (base.encoding == AudioFormat.Encoding.PCM_SIGNED) base
+                else AudioFormat(
+                    AudioFormat.Encoding.PCM_SIGNED,
+                    base.sampleRate,
+                    16,
+                    base.channels,
+                    base.channels * 2,
+                    base.sampleRate,
+                    false
+                )
+
+            val toLoad = if (target == base) original
+            else AudioSystem.getAudioInputStream(target, original)
+
+            val c = AudioSystem.getClip()
+            c.open(toLoad)
+            clip = c
+        }
+
+
+    }
+
+    fun playClick() {
+        if (!soundEnabled) return
+        val now = System.nanoTime()
+        if (now - lastPlay < 20_000_000L) return  // 20 ms cooldown
+        lastPlay = now
+
+        val c = clip ?: run { preloadClip(); clip } ?: return
+        if (c.isRunning) c.stop()
+        c.framePosition = 0
+        c.start()
+    }
+
     private fun loadScaledIcon(path: String, dip: Int): Icon {
         val raw = try { IconLoader.getIcon(path, javaClass) }
         catch (_: Throwable) { com.intellij.icons.AllIcons.General.Information }
