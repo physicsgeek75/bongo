@@ -1,6 +1,5 @@
 package com.physicsgeek75.bongo
 
-import andel.text.textLeft
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.Project
