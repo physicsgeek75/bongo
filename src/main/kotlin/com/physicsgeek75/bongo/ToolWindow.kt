@@ -15,8 +15,8 @@ import com.intellij.openapi.application.ApplicationManager
 
 class ToolWindow : ToolWindowFactory, DumbAware {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val icon1 = IconLoader.getIcon("resources/icons/icon1.png", javaClass)
-        val icon2 = IconLoader.getIcon("resources/icons/icon2.png", javaClass)
+        val icon1 = IconLoader.getIcon("resources/icons/icon1.svg", javaClass)
+        val icon2 = IconLoader.getIcon("resources/icons/icon2.svg", javaClass)
 
         val label = JBLabel(icon1)
         label.horizontalAlignment = JBLabel.CENTER
