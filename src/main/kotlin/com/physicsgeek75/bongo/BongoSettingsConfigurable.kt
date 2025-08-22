@@ -27,14 +27,14 @@ class BongoSettingsConfigurable(private val project: Project) : Configurable {
                     }
 
                     row {
-                        sizeLabel = label("Size: ${svc.getSizeDip()} px").component
+                        sizeLabel = label("Size: ${svc.getSizeDip()} DIP").component
 
                         // min 0 max 512
                         sizeSlider = slider(0, 512, 0, majorTickSpacing = 0).applyToComponent {
                             paintTicks = false
                             paintLabels = false
                             snapToTicks = false
-                            addChangeListener { sizeLabel.text = "Size: $value px" }
+                            addChangeListener { sizeLabel.text = "Size: $value DIP" }
                         }.component
                     }
 
@@ -63,7 +63,7 @@ class BongoSettingsConfigurable(private val project: Project) : Configurable {
         svc.setVisible(enableCheck.isSelected)
         if (svc.isVisible()) svc.ensureAttached()
 
-        sizeLabel.text = "Size: ${svc.getSizeDip()} px"
+        sizeLabel.text = "Size: ${svc.getSizeDip()} DIP"
     }
 
     override fun reset() {
@@ -71,7 +71,7 @@ class BongoSettingsConfigurable(private val project: Project) : Configurable {
         enableCheck.isSelected = svc.isVisible()
         sizeSlider.value = svc.getSizeDip()
 
-        sizeLabel.text = "Size: ${svc.getSizeDip()} px"
+        sizeLabel.text = "Size: ${svc.getSizeDip()} DIP"
 
     }
 

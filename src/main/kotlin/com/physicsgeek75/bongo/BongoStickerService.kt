@@ -3,7 +3,6 @@ package com.physicsgeek75.bongo
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
@@ -17,9 +16,8 @@ import com.intellij.util.ui.JBUI
 import java.awt.Point
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
 import java.awt.*
+import java.awt.event.ComponentListener
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.Clip
 import javax.swing.*
@@ -31,6 +29,7 @@ import javax.sound.sampled.*
 private const val DEFAULT_SIZE_DIP = 128
 private const val DEFAULT_MARGIN_DIP = 0
 private const val ICON_DIP = DEFAULT_SIZE_DIP
+
 
 class StickerState {
     var visible: Boolean = true
@@ -47,6 +46,7 @@ class BongoStickerService(private val project: Project)
     private var state = StickerState()
 
     private var layeredPane: JLayeredPane? = null
+    private var lpResizeListener: ComponentListener? = null
     private var panel: JPanel? = null
     private var label: JBLabel? = null
     private var icon1: Icon? = null
@@ -76,7 +76,8 @@ class BongoStickerService(private val project: Project)
         if (!state.visible || panel != null) return
 
         val app = ApplicationManager.getApplication()
-        if (!app.isDispatchThread) {
+        if (!app.isDispatchThread) { // why was that there lol
+            // talking to myself is actually crazy
             app.invokeLater({ ensureAttached() }, ModalityState.any())
             return
         }
@@ -94,7 +95,23 @@ class BongoStickerService(private val project: Project)
             app.invokeLater({ ensureAttached() }, ModalityState.any())
             return
         }
+
+        if (layeredPane != null && layeredPane !== lp) {
+            lpResizeListener?.let { old -> layeredPane!!.removeComponentListener(old) }
+            lpResizeListener = null
+        }
+
         layeredPane = lp
+
+        val resize = object : ComponentAdapter() {
+            override fun componentResized(e: ComponentEvent) {
+                clampIntoBounds()
+            }
+        }
+
+        lp.addComponentListener(resize)
+        lpResizeListener = resize
+
 
         // icons (scaled once; cached here)
         icon1 = loadScaledIcon("/icons/icon1.svg", state.sizeDip)
@@ -134,6 +151,8 @@ class BongoStickerService(private val project: Project)
         layeredPane!!.revalidate()
         layeredPane!!.repaint()
 
+
+
         // Keep it inside bounds on window resize
         lp.addComponentListener(object : ComponentAdapter() {
             override fun componentResized(e: ComponentEvent) {
@@ -156,13 +175,25 @@ class BongoStickerService(private val project: Project)
     fun getSizeDip(): Int = state.sizeDip
 
     private fun detach() {
-        val lp = layeredPane
-        val p = panel
-        if (lp != null && p != null) {
-            lp.remove(p)
-            lp.revalidate()
-            lp.repaint()
+        val app = ApplicationManager.getApplication()
+        if (!app.isDispatchThread) {
+            app.invokeAndWait({ detach() }, ModalityState.any())
+            return
         }
+
+        val lp = layeredPane
+
+        lpResizeListener?.let { listener -> lp?.removeComponentListener(listener) }
+        lpResizeListener = null
+
+        panel?.let { p ->
+            lp?.remove(p)
+            lp?.revalidate()
+            lp?.repaint()
+        }
+
+        idleTimer?.stop()
+
         panel = null
         label = null
         icon1 = null
@@ -228,7 +259,23 @@ class BongoStickerService(private val project: Project)
     }
 
 
-    override fun dispose() = detach()
+    override fun dispose() {
+        val app = ApplicationManager.getApplication()
+        if (!app.isDispatchThread) {
+            app.invokeAndWait({ detach() }, ModalityState.any())
+        } else {
+            detach()
+        }
+
+        runCatching {
+            clip?.takeIf { it.isOpen }?.close()
+        }
+        clip = null
+
+        // clips.forEach { runCatching { it.close() } }
+        // clips = emptyArray()
+    }
+
 
 
 
