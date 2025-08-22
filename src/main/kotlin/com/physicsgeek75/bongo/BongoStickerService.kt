@@ -297,6 +297,7 @@ class BongoStickerService(private val project: Project)
         ApplicationManager.getApplication().invokeLater {
             lbl.icon = if (toggle) i2 else i1
             punch(p) // tiny “bounce” effect
+            // At infrequent random times, the bounce effect will send the sticker down approx 1px. cause unknown but not noticeable or disruptive; will leave as it is for now.
         }
     }
 
