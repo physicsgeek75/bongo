@@ -61,6 +61,8 @@ class BongoStickerService(private val project: Project)
     var soundEnabled: Boolean = true
     private var lastPlay = 0L //ns
 
+    private var punchActive = false
+
     init {
         connection.subscribe(BongoTopic.TOPIC, object : BongoTopic {
             override fun tapped() = onTap()
@@ -296,19 +298,27 @@ class BongoStickerService(private val project: Project)
         toggle = !toggle
         ApplicationManager.getApplication().invokeLater {
             lbl.icon = if (toggle) i2 else i1
-            punch(p) // tiny “bounce” effect
+            if (!punchActive) { punch(p) }
+           // tiny “bounce” effect
             // At infrequent random times, the bounce effect will send the sticker down approx 1px. cause unknown but not noticeable or disruptive; will leave as it is for now.
+            // Disregard the above comment, bug fixed as of V1.2.7
         }
     }
 
     private fun punch(p: JPanel) {
+        if(punchActive) return
+
         val y0 = p.y
         val dy = JBUI.scale(2)
+        punchActive=true
         p.setLocation(p.x, y0 + dy)
         Timer(90) {
             p.setLocation(p.x, y0)
+            punchActive = false
         }.apply { isRepeats = false; start() }
     }
+
+
 
     // ---------- Helpers ----------
     fun preloadClip() {
