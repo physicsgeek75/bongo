@@ -33,12 +33,10 @@ intellijPlatform {
         }
 
         changeNotes = """
-      <![CDATA[
         <ul>
           <li>Fixed an issue where the cat appeared smaller than intended during idle pose.</li>
           <li>Fixed an issue where the cat would drift downwards during very fast typing.</li>
         </ul>
-      ]]>
         """.trimIndent()
     }
 
