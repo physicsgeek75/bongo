@@ -155,15 +155,6 @@ class BongoStickerService(private val project: Project)
         layeredPane!!.add(panel, JLayeredPane.POPUP_LAYER,0)
         layeredPane!!.revalidate()
         layeredPane!!.repaint()
-
-
-
-        // Keep it inside bounds on window resize
-        lp.addComponentListener(object : ComponentAdapter() {
-            override fun componentResized(e: ComponentEvent) {
-                clampIntoBounds()
-            }
-        })
     }
 
     fun setVisible(visible: Boolean) {
