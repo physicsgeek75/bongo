@@ -3,11 +3,12 @@ package com.physicsgeek75.bongo
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.dsl.builder.panel
-import javax.swing.JCheckBox
-import javax.swing.JComponent
-import javax.swing.JLabel
-import javax.swing.JSlider
+import java.awt.Component
+import javax.swing.*
+
+
 
 class BongoSettingsConfigurable(private val project: Project) : Configurable {
 
@@ -15,10 +16,25 @@ class BongoSettingsConfigurable(private val project: Project) : Configurable {
     private lateinit var enableCheck: JCheckBox
     private lateinit var sizeSlider: JSlider
     private lateinit var sizeLabel: JLabel
+    private lateinit var designCombo: JComboBox<Design>
     private val svc = project.service<BongoStickerService>()
     override fun getDisplayName(): String = "Bongo Cat"
 
     override fun createComponent(): JComponent {
+
+        val svc = project.service<BongoStickerService>()
+        val designs = BongoDesigns.list(javaClass)
+
+        designCombo = ComboBox(DefaultComboBoxModel(designs.toTypedArray())).apply {
+            renderer = object : DefaultListCellRenderer() {
+                override fun getListCellRendererComponent(
+                    list: JList<*>, value: Any?, index: Int, isSelected: Boolean, cellHasFocus: Boolean
+                ): Component = super.getListCellRendererComponent(
+                    list, (value as? Design)?.name ?: value, index, isSelected, cellHasFocus
+                )
+            }
+        }
+
         if (root == null) {
             root = panel {
                 group("Main", ) {
@@ -45,6 +61,9 @@ class BongoSettingsConfigurable(private val project: Project) : Configurable {
                             reset()
                         }
                     }
+                    row("Bongo Design:") {
+                        cell(designCombo)
+                    }
                 }
             }
             reset()
@@ -53,12 +72,17 @@ class BongoSettingsConfigurable(private val project: Project) : Configurable {
     }
 
     override fun isModified(): Boolean {
-        return enableCheck.isSelected != svc.isVisible() ||
+        val svc = project.service<BongoStickerService>()
+        val sel = (designCombo.selectedItem as Design).id
+        return sel != svc.state.designId ||
+                enableCheck.isSelected != svc.isVisible() ||
                 sizeSlider.value != svc.getSizeDip()
     }
 
     override fun apply() {
         val svc = project.service<BongoStickerService>()
+        val sel = (designCombo.selectedItem as Design).id
+        svc.applyDesign(sel)
         svc.applySize(sizeSlider.value)
         svc.setVisible(enableCheck.isSelected)
         if (svc.isVisible()) svc.ensureAttached()
@@ -68,6 +92,10 @@ class BongoSettingsConfigurable(private val project: Project) : Configurable {
 
     override fun reset() {
         val svc = project.service<BongoStickerService>()
+        val designs = (0 until designCombo.model.size).map { designCombo.model.getElementAt(it) as Design }
+        val idx = designs.indexOfFirst { it.id == svc.state.designId }.takeIf { it >= 0 } ?: 0
+        designCombo.selectedIndex = idx
+
         enableCheck.isSelected = svc.isVisible()
         sizeSlider.value = svc.getSizeDip()
 

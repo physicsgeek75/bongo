@@ -32,10 +32,12 @@ private const val ICON_DIP = DEFAULT_SIZE_DIP
 
 
 class StickerState {
+    var designId: String = "classic"
     var visible: Boolean = true
     var xDip: Int = -1
     var yDip: Int = -1
     var sizeDip: Int = DEFAULT_SIZE_DIP
+
 }
 
 @State(name = "BongoStickerState", storages = [Storage("bongoSticker.xml")])
@@ -62,6 +64,10 @@ class BongoStickerService(private val project: Project)
     private var lastPlay = 0L //ns
 
     private var punchActive = false
+
+    private data class IconSet (val i1: Icon, val i2: Icon, val idle: Icon)
+    private val iconCache = mutableMapOf<Pair<String, Int>, IconSet>()
+
 
     init {
         connection.subscribe(BongoTopic.TOPIC, object : BongoTopic {
@@ -115,10 +121,7 @@ class BongoStickerService(private val project: Project)
         lpResizeListener = resize
 
 
-        // icons (scaled once; cached here)
-        icon1 = loadScaledIcon("/icons/icon1.svg", state.sizeDip)
-        icon2 = loadScaledIcon("/icons/icon2.svg", state.sizeDip)
-        idleIcon = loadScaledIcon("/icons/idleIcon.svg", state.sizeDip)
+        updateIconsAndRefresh()
 
         label = JBLabel(icon1).apply {
             horizontalAlignment = JBLabel.CENTER
@@ -207,14 +210,11 @@ class BongoStickerService(private val project: Project)
     fun applySize(newDip: Int) {
         state.sizeDip = newDip.coerceIn(0, 512)
 
+        invalidateCache(sizeDip = state.sizeDip)
+
         if (state.visible && panel == null) {
             ensureAttached()
         }
-
-        // REsclae once
-        icon1 = loadScaledIcon("/icons/icon1.svg", state.sizeDip)
-        icon2 = loadScaledIcon("/icons/icon2.svg", state.sizeDip)
-        idleIcon = loadScaledIcon("/icons/idleIcon.svg", state.sizeDip)
 
         val sizePx = JBUI.scale(state.sizeDip)
 
@@ -241,6 +241,8 @@ class BongoStickerService(private val project: Project)
             revalidate()
             repaint()
         }
+
+        updateIconsAndRefresh()
 
         clampIntoBounds()
     }
@@ -276,6 +278,32 @@ class BongoStickerService(private val project: Project)
 
         // clips.forEach { runCatching { it.close() } }
         // clips = emptyArray()
+    }
+
+    private fun updateIconsAndRefresh() {
+        val set = loadIconSet(state.designId, state.sizeDip)
+        icon1 = set.i1
+        icon2 = set.i2
+        idleIcon = set.idle
+
+        label?.apply {
+            icon = when {
+                toggle -> icon2
+                idleTimer?.isRunning == false -> idleIcon
+                else -> icon1
+            }
+            revalidate(); repaint()
+        }
+        panel?.revalidate(); panel?.repaint()
+        layeredPane?.revalidate(); layeredPane?.repaint()
+    }
+
+    fun applyDesign(newId: String) {
+        if (state.designId == newId) return
+        state.designId = newId
+        invalidateCache(designId = newId)
+        if (state.visible && panel == null) ensureAttached()
+        updateIconsAndRefresh()
     }
 
 
@@ -321,6 +349,22 @@ class BongoStickerService(private val project: Project)
 
 
     // ---------- Helpers ----------
+    private fun loadIconSet(designId: String, sizeDip: Int): IconSet {
+        val key = designId to sizeDip
+        return iconCache.getOrPut(key) {
+            fun L(name: String) = loadScaledIcon("/designs/$designId/$name.svg", sizeDip)
+            IconSet(L("icon1"), L("icon2"), L("idleIcon"))
+        }
+    }
+
+    private fun invalidateCache(designId: String? = null, sizeDip: Int? = null) {
+        if (designId == null && sizeDip == null) iconCache.clear()
+        else iconCache.keys.removeIf { (d, s) ->
+            (designId == null || d == designId) && (sizeDip == null || s == sizeDip)
+        }
+    }
+
+
     fun preloadClip() {
         if(clip!=null && clip!!.isOpen) return
 
