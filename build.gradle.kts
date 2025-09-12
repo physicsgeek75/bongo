@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.physicsgeek75"
-version = "1.2.7"
+version = "2.0.4"
 
 repositories {
     mavenCentral()
@@ -34,8 +34,12 @@ intellijPlatform {
 
         changeNotes = """
         <ul>
-          <li>Fixed an issue where the cat appeared smaller than intended during idle pose.</li>
-          <li>Fixed an issue where the cat would drift downwards during very fast typing.</li>
+          <li>NEW CUSTOMIZABLE DESIGNS FOR BONGOCAT:</li>
+          <li>   Streamer Bongo</li>
+          <li>   Minecraft Bongo</li>
+          <li>   Nerd Bongo</li>
+          <li>   Gangster Bongo</li>
+          <li>   Royal Bongo</li>
         </ul>
         """.trimIndent()
     }
