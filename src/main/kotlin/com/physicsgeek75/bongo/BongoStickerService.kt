@@ -28,11 +28,9 @@ import javax.sound.sampled.*
 
 private const val DEFAULT_SIZE_DIP = 128
 private const val DEFAULT_MARGIN_DIP = 0
-private const val ICON_DIP = DEFAULT_SIZE_DIP
-
 
 class StickerState {
-    var designId: String = "classic"
+    var designId: String = "default"
     var visible: Boolean = true
     var xDip: Int = -1
     var yDip: Int = -1
