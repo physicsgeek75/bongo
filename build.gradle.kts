@@ -1,11 +1,13 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+
 plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "2.1.0"
-    id("org.jetbrains.intellij.platform") version "2.5.0"
+    id("org.jetbrains.kotlin.jvm") version "2.4.0"
+    id("org.jetbrains.intellij.platform") version "2.16.0"
 }
 
 group = "com.physicsgeek75"
-version = "2.0.5"
+version = "2.0.6"
 
 repositories {
     mavenCentral()
@@ -46,10 +48,10 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            ide("IC", "2024.3")
-            ide("IC", "2025.2")
-            ide("PY", "2024.3")
-            ide("PY","2025.2")
+            create(IntelliJPlatformType.IntellijIdea, "2024.3")
+            create(IntelliJPlatformType.IntellijIdea, "2026.1")
+            create(IntelliJPlatformType.PyCharmProfessional, "2024.3")
+            create(IntelliJPlatformType.PyCharmProfessional, "2026.1")
         }
     }
 
